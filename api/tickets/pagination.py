@@ -10,9 +10,9 @@ class TicketPagination(PageNumberPagination):
     def get_paginated_response(self, data):
         return Response(
             {
-                "tickets": data,
-                "page": self.page.number,
-                "limit": self.get_page_size(self.request),
-                "total": self.page.paginator.count,
+                "count": self.page.paginator.count,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
             }
         )

@@ -17,9 +17,8 @@ export default function Login({ onAuthenticated }) {
         body: JSON.stringify({ username, password }),
       });
       setAccessToken(tokens.access);
-      const user = await api("/auth/me");
       setPassword("");
-      onAuthenticated(user);
+      onAuthenticated(tokens.user);
     } catch (requestError) {
       setError(requestError.message === "No active account found with the given credentials"
         ? "The username or password is incorrect."

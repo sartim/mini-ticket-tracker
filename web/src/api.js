@@ -1,4 +1,4 @@
-const API_ROOT = "/api";
+const API_ROOT = "/api/v1";
 let accessToken = null;
 
 export function setAccessToken(token) {
@@ -45,7 +45,7 @@ export async function api(path, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = data.detail || data.error || "Request failed. Please try again.";
+    const detail = data.error || data.detail || "Request failed. Please try again.";
     throw new Error(typeof detail === "string" ? detail : Object.values(detail).flat().join(" "));
   }
   return data;

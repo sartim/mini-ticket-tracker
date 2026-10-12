@@ -49,15 +49,16 @@ export default function App() {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const filterRef = useRef(null);
-  const canCreateTickets = authUser?.permissions?.includes("tickets.add_ticket") ?? false;
-  const canEditTickets = authUser?.permissions?.includes("tickets.change_ticket") ?? false;
-  const canViewTickets = authUser?.permissions?.includes("tickets.view_ticket") ?? false;
+  const hasPermission = (code) => authUser?.permissions?.some((permission) => permission.code === code) ?? false;
+  const canCreateTickets = hasPermission("tickets.add_ticket");
+  const canEditTickets = hasPermission("tickets.change_ticket");
+  const canViewTickets = hasPermission("tickets.view_ticket");
 
   useEffect(() => {
     api("/auth/token/refresh", { method: "POST" })
       .then((tokens) => {
         setAccessToken(tokens.access);
-        return api("/auth/me");
+        return tokens.user;
       })
       .then(setAuthUser)
       .catch(() => clearAccessToken())
@@ -90,7 +91,7 @@ export default function App() {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!authUser || !authUser.permissions?.includes("tickets.view_ticket")) {
+    if (!authUser || !authUser.permissions?.some((permission) => permission.code === "tickets.view_ticket")) {
       setLoading(false);
       return;
     }
@@ -104,8 +105,8 @@ export default function App() {
         api(`/tickets?${query}`),
         api(`/tickets/stats${searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : ""}`),
       ]);
-      setTickets(list.tickets);
-      setTotal(list.total);
+      setTickets(list.results);
+      setTotal(list.count);
       setStats(counts);
     } catch (err) {
       setError(err.message);

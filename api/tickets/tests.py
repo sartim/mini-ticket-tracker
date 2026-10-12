@@ -10,6 +10,8 @@ from .models import Ticket
 
 
 class TicketApiTests(APITestCase):
+    api = "/api/v1"
+
     def setUp(self):
         user = get_user_model().objects.create_user(username="ticket-api-test")
         user.groups.add(Group.objects.get(name="Agent"))
@@ -17,32 +19,39 @@ class TicketApiTests(APITestCase):
 
     def test_create_ticket_defaults_and_rejects_invalid_input(self):
         created = self.client.post(
-            "/tickets", {"title": "Cannot sign in", "description": "Login times out"}, format="json"
+            f"{self.api}/tickets", {"title": "Cannot sign in", "description": "Login times out"}, format="json"
         )
         self.assertEqual(created.status_code, 201)
         self.assertEqual(created.data["status"], Ticket.Status.OPEN)
         self.assertEqual(created.data["priority"], Ticket.Priority.MEDIUM)
 
-        invalid = self.client.post("/tickets", {"title": ""}, format="json")
+        invalid = self.client.post(f"{self.api}/tickets", {"title": ""}, format="json")
         self.assertEqual(invalid.status_code, 400)
+        self.assertIn("error", invalid.data)
 
     def test_list_filters_and_paginates_tickets(self):
         Ticket.objects.create(title="Open item")
+        Ticket.objects.create(title="Another open item")
         Ticket.objects.create(title="Closed item", status=Ticket.Status.CLOSED)
 
-        response = self.client.get("/tickets?status=open&page=1&limit=1")
+        response = self.client.get(f"{self.api}/tickets?status=open&page=1&limit=1")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["total"], 1)
-        self.assertEqual(response.data["tickets"][0]["title"], "Open item")
+        self.assertEqual(response.data["count"], 2)
+        self.assertIsNotNone(response.data["next"])
+        self.assertIsNone(response.data["previous"])
+        next_page = self.client.get(response.data["next"])
+        self.assertEqual(next_page.status_code, 200)
+        self.assertEqual(next_page.data["count"], 2)
+        self.assertIsNotNone(next_page.data["previous"])
 
     def test_invalid_filter_and_pagination_are_rejected(self):
-        self.assertEqual(self.client.get("/tickets?status=waiting").status_code, 400)
-        self.assertEqual(self.client.get("/tickets?page=0").status_code, 404)
+        self.assertEqual(self.client.get(f"{self.api}/tickets?status=waiting").status_code, 400)
+        self.assertEqual(self.client.get(f"{self.api}/tickets?page=0").status_code, 404)
 
     def test_patch_updates_fields_and_stats_include_zero_statuses(self):
         ticket = Ticket.objects.create(title="Password reset")
         response = self.client.patch(
-            f"/tickets/{ticket.id}",
+            f"{self.api}/tickets/{ticket.id}",
             {"status": Ticket.Status.IN_PROGRESS, "priority": Ticket.Priority.HIGH},
             format="json",
         )
@@ -50,15 +59,62 @@ class TicketApiTests(APITestCase):
         self.assertEqual(response.data["status"], Ticket.Status.IN_PROGRESS)
         self.assertEqual(response.data["priority"], Ticket.Priority.HIGH)
         self.assertEqual(
-            self.client.get("/tickets/stats").data,
+            self.client.get(f"{self.api}/tickets/stats").data,
             {"open": 0, "in_progress": 1, "closed": 0},
         )
 
     def test_unknown_ticket_returns_404(self):
         response = self.client.patch(
-            "/tickets/999", {"status": "closed"}, format="json"
+            f"{self.api}/tickets/999", {"status": "closed"}, format="json"
         )
         self.assertEqual(response.status_code, 404)
+        self.assertIn("error", response.data)
+
+
+class AuthenticationApiTests(APITestCase):
+    api = "/api/v1"
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="auth-api-test", password="test-password"
+        )
+        self.user.groups.add(Group.objects.get(name="Agent"))
+
+    def test_login_returns_access_and_user_with_role_and_permission_objects(self):
+        response = self.client.post(
+            f"{self.api}/auth/token",
+            {"username": "auth-api-test", "password": "test-password"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertEqual(response.data["user"]["username"], "auth-api-test")
+        self.assertEqual(response.data["user"]["roles"], [{"name": "Agent"}])
+        self.assertTrue(
+            any(permission["code"] == "tickets.view_ticket" for permission in response.data["user"]["permissions"])
+        )
+        self.assertNotIn("refresh", response.data)
+
+    def test_login_error_uses_error_key(self):
+        response = self.client.post(
+            f"{self.api}/auth/token",
+            {"username": "auth-api-test", "password": "incorrect"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.data)
+
+    def test_refresh_returns_access_and_user(self):
+        self.client.post(
+            f"{self.api}/auth/token",
+            {"username": "auth-api-test", "password": "test-password"},
+            format="json",
+        )
+        response = self.client.post(f"{self.api}/auth/token/refresh")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertEqual(response.data["user"]["id"], self.user.pk)
 
 
 class SeedDemoDataCommandTests(TestCase):

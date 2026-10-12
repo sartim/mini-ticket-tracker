@@ -20,8 +20,8 @@ const user = {
   id: 1,
   username: "support-agent",
   role: "Agent",
-  roles: ["Agent"],
-  permissions: ["tickets.view_ticket", "tickets.add_ticket", "tickets.change_ticket"],
+  roles: [{ name: "Agent" }],
+  permissions: ["tickets.view_ticket", "tickets.add_ticket", "tickets.change_ticket"].map((code) => ({ code, name: code })),
 };
 
 const ticket = {
@@ -36,8 +36,7 @@ const ticket = {
 function setupSignedInApp() {
   let tickets = [ticket];
   apiMock.mockImplementation(async (path, options = {}) => {
-    if (path === "/auth/token/refresh") return { access: "test-access" };
-    if (path === "/auth/me") return user;
+    if (path === "/auth/token/refresh") return { access: "test-access", user };
     if (path === "/auth/logout") return {};
     if (path.startsWith("/tickets/stats")) return { open: 1, in_progress: 0, closed: 0 };
     if (path.startsWith("/tickets?") || path === "/tickets") {
@@ -49,7 +48,7 @@ function setupSignedInApp() {
       const query = new URL(path, "http://localhost").searchParams;
       const search = (query.get("search") || "").toLowerCase();
       const filtered = tickets.filter((item) => `${item.title} ${item.description}`.toLowerCase().includes(search));
-      return { tickets: filtered, total: filtered.length };
+      return { count: filtered.length, next: null, previous: null, results: filtered };
     }
     if (path.startsWith("/tickets/")) return { ...ticket, ...JSON.parse(options.body) };
     throw new Error(`Unexpected API request: ${path}`);
@@ -114,10 +113,9 @@ describe("Ticket Desk UI workflow", () => {
     const userActions = userEvent.setup();
     apiMock.mockImplementation(async (path) => {
       if (path === "/auth/token/refresh") throw new Error("No saved session");
-      if (path === "/auth/token") return { access: "new-access" };
-      if (path === "/auth/me") return user;
+      if (path === "/auth/token") return { access: "new-access", user };
       if (path.startsWith("/tickets/stats")) return { open: 0, in_progress: 0, closed: 0 };
-      if (path.startsWith("/tickets?")) return { tickets: [], total: 0 };
+      if (path.startsWith("/tickets?")) return { count: 0, next: null, previous: null, results: [] };
       throw new Error(`Unexpected API request: ${path}`);
     });
     render(<App />);

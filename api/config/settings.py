@@ -44,7 +44,10 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "tickets",
 ]
-MIDDLEWARE = ["django.middleware.security.SecurityMiddleware"]
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "config.middleware.ApiErrorMiddleware",
+]
 ROOT_URLCONF = "config.urls"
 TEMPLATES = []
 WSGI_APPLICATION = "config.wsgi.application"
@@ -68,6 +71,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "UTC"
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -93,4 +97,4 @@ JWT_REFRESH_COOKIE_NAME = os.environ.get(
     "JWT_REFRESH_COOKIE_NAME", "ticket_desk_refresh"
 )
 JWT_REFRESH_COOKIE_SECURE = not DEBUG
-JWT_REFRESH_COOKIE_PATH = "/api/auth/"
+JWT_REFRESH_COOKIE_PATH = "/api/v1/auth/"
