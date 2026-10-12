@@ -84,7 +84,6 @@ jobs:
           node-version: 22
       - run: npm install --global vercel@latest
       - run: vercel deploy --token="$VERCEL_TOKEN"
-        working-directory: web
 
   deploy-production:
     name: Deploy frontend production
@@ -106,4 +105,3 @@ jobs:
           node-version: 22
       - run: npm install --global vercel@latest
       - run: vercel deploy --prod --token="$VERCEL_TOKEN"
-        working-directory: web
