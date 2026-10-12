@@ -83,13 +83,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install --global vercel@latest
-      - run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
-        working-directory: web
-      - run: npm ci
-        working-directory: web
-      - run: vercel build --token="$VERCEL_TOKEN"
-        working-directory: web
-      - run: vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+      - run: vercel deploy --token="$VERCEL_TOKEN"
         working-directory: web
 
   deploy-production:
@@ -111,11 +105,5 @@ jobs:
         with:
           node-version: 22
       - run: npm install --global vercel@latest
-      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-        working-directory: web
-      - run: npm ci
-        working-directory: web
-      - run: vercel build --prod --token="$VERCEL_TOKEN"
-        working-directory: web
-      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - run: vercel deploy --prod --token="$VERCEL_TOKEN"
         working-directory: web
