@@ -180,7 +180,7 @@ Statuses are `open`, `in_progress`, and `closed`. Priorities are `low`, `medium`
 
 ## Checks
 
-Run the API tests with `cd api && python manage.py test`, the frontend interaction tests with `cd web && npm test`, and check the React production build with `cd web && npm run build`.
+Run the API unit tests locally without PostgreSQL with `cd api && python manage.py test --settings=config.test_settings`. The test settings use SQLite; CI separately runs the backend suite against PostgreSQL. Run the frontend interaction tests with `cd web && npm test`, and check the React production build with `cd web && npm run build`.
 
 ## GitHub Actions and Vercel deployment
 

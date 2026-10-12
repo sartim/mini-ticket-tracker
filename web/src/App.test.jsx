@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { apiMock, setAccessTokenMock, clearAccessTokenMock } = vi.hoisted(() => ({
@@ -38,7 +38,12 @@ function setupSignedInApp() {
   apiMock.mockImplementation(async (path, options = {}) => {
     if (path === "/auth/token/refresh") return { access: "test-access", user };
     if (path === "/auth/logout") return {};
-    if (path.startsWith("/tickets/stats")) return { open: 1, in_progress: 0, closed: 0 };
+    if (path.startsWith("/tickets/stats")) {
+      return Object.fromEntries(["open", "in_progress", "closed"].map((status) => [
+        status,
+        tickets.filter((item) => item.status === status).length,
+      ]));
+    }
     if (path.startsWith("/tickets?") || path === "/tickets") {
       if (options.method === "POST") {
         const created = { ...JSON.parse(options.body), id: 8, status: "open", created_at: ticket.created_at };
@@ -47,10 +52,17 @@ function setupSignedInApp() {
       }
       const query = new URL(path, "http://localhost").searchParams;
       const search = (query.get("search") || "").toLowerCase();
-      const filtered = tickets.filter((item) => `${item.title} ${item.description}`.toLowerCase().includes(search));
+      const status = query.get("status");
+      const filtered = tickets.filter((item) =>
+        (!status || item.status === status) && `${item.title} ${item.description}`.toLowerCase().includes(search));
       return { count: filtered.length, next: null, previous: null, results: filtered };
     }
-    if (path.startsWith("/tickets/")) return { ...ticket, ...JSON.parse(options.body) };
+    if (path.startsWith("/tickets/")) {
+      const id = Number(path.split("/").at(-1));
+      const changes = JSON.parse(options.body);
+      tickets = tickets.map((item) => item.id === id ? { ...item, ...changes } : item);
+      return tickets.find((item) => item.id === id);
+    }
     throw new Error(`Unexpected API request: ${path}`);
   });
   return render(<App />);
@@ -67,6 +79,8 @@ describe("Ticket Desk UI workflow", () => {
     setupSignedInApp();
 
     await screen.findByText(ticket.title);
+    expect(screen.queryByText("Lodwar Services")).toBeNull();
+    expect(screen.getByLabelText("Assigned to support-agent").textContent).toBe("SA");
     await userActions.click(screen.getByRole("button", { name: "List view" }));
     expect(screen.getByRole("button", { name: "List view" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Board view" }).getAttribute("aria-pressed")).toBe("false");
@@ -87,6 +101,55 @@ describe("Ticket Desk UI workflow", () => {
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("search=printer"));
     });
+    expect(await screen.findByText(ticket.title)).toBeTruthy();
+  });
+
+  it("moves a ticket by dragging it to another status lane and persists the change", async () => {
+    setupSignedInApp();
+    const title = await screen.findByText(ticket.title);
+    const card = title.closest("article");
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "",
+      setData: vi.fn(),
+      getData: vi.fn(() => "7"),
+    };
+
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.drop(screen.getByRole("region", { name: /In progress/ }), { dataTransfer });
+
+    await waitFor(() => {
+      expect(apiMock).toHaveBeenCalledWith("/tickets/7", expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "in_progress" }),
+      }));
+    });
+    expect(await screen.findByText("Ticket updated.")).toBeTruthy();
+    expect(await screen.findByText(ticket.title)).toBeTruthy();
+  });
+
+  it("updates ticket priority and filters the queue by status", async () => {
+    const userActions = userEvent.setup();
+    setupSignedInApp();
+    await screen.findByText(ticket.title);
+
+    await userActions.click(screen.getByText(ticket.title).closest("article").querySelector("summary"));
+    await userActions.selectOptions(screen.getByLabelText("Priority"), "high");
+    await waitFor(() => {
+      expect(apiMock).toHaveBeenCalledWith("/tickets/7", expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ priority: "high" }),
+      }));
+    });
+    await waitFor(() => {
+      const ticketCard = screen.getByText(ticket.title).closest("article");
+      expect(ticketCard.querySelector(".ticket-priority-label").textContent).toBe("high");
+    });
+
+    await userActions.click(screen.getAllByRole("button", { name: /In progress/ })[0]);
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("status=in_progress")));
+    expect(await screen.findByText("No in progress tickets")).toBeTruthy();
+    await userActions.click(screen.getAllByRole("button", { name: /All tickets/ })[0]);
     expect(await screen.findByText(ticket.title)).toBeTruthy();
   });
 

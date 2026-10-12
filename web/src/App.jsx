@@ -14,6 +14,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
 }
 
+function userInitials(user) {
+  const name = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() || user?.username || "?";
+  return name.split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
+}
+
 function ChromeIcon({ name }) {
   const shapes = {
     sidebar: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 4v16"/></>,
@@ -239,7 +244,7 @@ export default function App() {
           <button className={statusFilter === "in_progress" ? "active" : ""} onClick={() => { setPage(1); setStatusFilter("in_progress"); }}><span className="nav-icon progress-icon">◷</span>In progress <span className="nav-count">{stats.in_progress}</span></button>
           <button className={statusFilter === "closed" ? "active" : ""} onClick={() => { setPage(1); setStatusFilter("closed"); }}><span className="nav-icon closed-icon">✓</span>Resolved <span className="nav-count">{stats.closed}</span></button>
         </nav>
-        <div className="sidebar-bottom"><div className="sidebar-status"><span className="live-dot"/><span>Support queue</span></div><div className="sidebar-account"><span className="account-details"><strong>Lodwar Services</strong><small>{authUser.username} · {authUser.role}</small></span><button type="button" className="signout-button" onClick={signOut} aria-label="Sign out" title="Sign out">↗</button></div></div>
+        <div className="sidebar-bottom"><div className="sidebar-status"><span className="live-dot"/><span>Support queue</span></div><div className="sidebar-account"><span className="account-details"><small>{authUser.username} · {authUser.role}</small></span><button type="button" className="signout-button" onClick={signOut} aria-label="Sign out" title="Sign out">↗</button></div></div>
       </aside>
 
       <section className="workspace" id="top">
@@ -272,7 +277,7 @@ export default function App() {
                       <div className="ticket-card-heading"><span className={`priority-marker priority-${ticket.priority}`} aria-hidden="true"/><span className="ticket-code">TKT-{String(ticket.id).padStart(4, "0")}</span>{canEditTickets && <details className="ticket-actions"><summary className="ticket-card-menu" aria-label={`Edit ${ticket.title}`}>•••</summary><div className="ticket-actions-menu"><label htmlFor={`priority-${ticket.id}`}>Priority</label><select id={`priority-${ticket.id}`} value={ticket.priority} onChange={(event) => updateTicket(ticket, "priority", event.target.value)}>{PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select><label htmlFor={`status-${ticket.id}`}>Status</label><select id={`status-${ticket.id}`} value={ticket.status} onChange={(event) => updateTicket(ticket, "status", event.target.value)}>{STATUSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div></details>}</div>
                       <h3 title={ticket.title}>{ticket.title}</h3>
                       {ticket.description && <p className="ticket-description">{ticket.description}</p>}
-                      <div className="ticket-card-footer"><span className="ticket-card-date"><span aria-hidden="true">▣</span>{formatDate(ticket.created_at)}</span><span className={`ticket-priority-label priority-${ticket.priority}`}>{ticket.priority}</span><span className="card-team-avatar" title="Support team">LS</span></div>
+                      <div className="ticket-card-footer"><span className="ticket-card-date"><span aria-hidden="true">▣</span>{formatDate(ticket.created_at)}</span><span className={`ticket-priority-label priority-${ticket.priority}`}>{ticket.priority}</span><span className="card-team-avatar" title={authUser.username} aria-label={`Assigned to ${authUser.username}`}>{userInitials(authUser)}</span></div>
                     </article>
                   ))}
                 </div>

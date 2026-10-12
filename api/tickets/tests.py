@@ -116,6 +116,31 @@ class AuthenticationApiTests(APITestCase):
         self.assertIn("access", response.data)
         self.assertEqual(response.data["user"]["id"], self.user.pk)
 
+    def test_viewer_can_read_but_cannot_create_tickets(self):
+        viewer = get_user_model().objects.create_user(username="viewer-api-test")
+        viewer.groups.add(Group.objects.get(name="Viewer"))
+        self.client.force_authenticate(user=viewer)
+
+        self.assertEqual(self.client.get(f"{self.api}/tickets").status_code, 200)
+        denied = self.client.post(
+            f"{self.api}/tickets", {"title": "Not allowed"}, format="json"
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertIn("error", denied.data)
+
+    def test_logout_clears_refresh_cookie_and_sign_in_session(self):
+        login = self.client.post(
+            f"{self.api}/auth/token",
+            {"username": "auth-api-test", "password": "test-password"},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        response = self.client.post(f"{self.api}/auth/logout")
+
+        self.assertEqual(response.status_code, 205)
+        self.assertIn("ticket_desk_refresh", response.cookies)
+        self.assertEqual(response.cookies["ticket_desk_refresh"]["max-age"], 0)
+
 
 class SeedDemoDataCommandTests(TestCase):
     def test_command_creates_demo_tickets_across_statuses_and_priorities(self):
