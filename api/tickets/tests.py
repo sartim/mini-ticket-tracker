@@ -179,3 +179,17 @@ class SeedDemoDataCommandTests(TestCase):
         self.assertEqual(existing.priority, Ticket.Priority.LOW)
         self.assertIn("8 created, 1 already existed", output.getvalue())
         self.assertIn("0 created, 9 already existed", output.getvalue())
+
+    def test_seed_demo_account_creates_limited_agent_and_is_repeatable(self):
+        output = StringIO()
+
+        call_command("seed_demo_account", stdout=output)
+        call_command("seed_demo_account", stdout=output)
+
+        user = get_user_model().objects.get(username="demo")
+        self.assertTrue(user.check_password("ticketdesk-demo-2026"))
+        self.assertFalse(user.is_superuser)
+        self.assertFalse(user.is_staff)
+        self.assertEqual(list(user.groups.values_list("name", flat=True)), ["Agent"])
+        self.assertIn("created with Agent access", output.getvalue())
+        self.assertIn("reset with Agent access", output.getvalue())

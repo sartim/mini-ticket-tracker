@@ -15,15 +15,22 @@ docker compose up --build
 
 Open [http://localhost:5173](http://localhost:5173). The API is available at [http://localhost:8000](http://localhost:8000). Compose starts PostgreSQL, applies Django migrations, and serves the React development UI. The root `.env` configures Compose and Django; `web/.env` is only needed when running Vite directly. Stop the services with `Ctrl+C`; use `docker compose down -v` only when you also want to delete the local database volume.
 
-### Login credentials
+### Live demo login
 
-There is no shared default username or password. The frontend test account is mocked and cannot sign in to a running app. For the local Docker setup, create your own administrator account after the containers are up:
+The public demo uses a shared Agent account. Anyone can sign in and change the shared demo tickets, so do not enter private information.
+
+- Username: `demo`
+- Password: `ticketdesk-demo-2026`
+
+The demo account can create and update tickets, but it is not an administrator. The production deployment workflow seeds this account and example tickets after applying database migrations.
+
+For a private local Docker setup, create your own administrator account after the containers are up:
 
 ```sh
 docker compose exec api python manage.py createsuperuser
 ```
 
-Enter the username and password you choose in the login form at `http://localhost:5173`. The superuser has Admin access. To populate the board, seed sample tickets separately with `docker compose exec api python manage.py seed_demo_data`; this does not create a login account.
+Enter the username and password you choose in the login form at `http://localhost:5173`. The superuser has Admin access. Seed sample tickets locally with `docker compose exec api python manage.py seed_demo_data`.
 
 For a non-admin Agent or Viewer account, create a regular Django user, then assign its role:
 
@@ -44,8 +51,6 @@ Exit the shell, then assign its role (replace the username or role as needed):
 ```sh
 docker compose exec api python manage.py assign_role support-agent --role Agent
 ```
-
-The Vercel site is currently a UI preview only: the Django API remains local, so no account can sign in through the hosted site yet. The locally created account works with the local app and database only.
 
 Seed the database with example tickets across all statuses and priorities:
 
@@ -184,18 +189,18 @@ Run the API unit tests locally without PostgreSQL with `cd api && python manage.
 
 ## GitHub Actions and Vercel deployment
 
-The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. It runs on pull requests and pushes. Same-repository pull requests create frontend previews, and pushes to `main` deploy the frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
+The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. Same-repository pull requests create frontend previews, and pushes to `main` deploy the API and frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
 
 Deployment details:
 
-1. The React frontend Vercel project uses root directory `web` and is already created. Its first deployment is available at [mini-ticket-tracker-two.vercel.app](https://mini-ticket-tracker-two.vercel.app).
-2. The Django API remains local for now. The hosted frontend is therefore for UI preview only; its login and ticket operations need the API. Continue using the local Vite + Django setup for functional testing until the API is deployed or otherwise made reachable.
-3. A free-tier Neon Postgres database named `mini-ticket-tracker-dev` is provisioned in Frankfurt and connected to the Vercel project's Development environment only. It is limited to 1 GB storage and 100 compute-hours per project; keep it for development data. To use it locally, install and authenticate the Vercel CLI, then from `web/` link the `mini-ticket-tracker` project and run `vercel env run -e development -- python3 ../api/manage.py migrate` followed by `vercel env run -e development -- python3 ../api/manage.py runserver`. This makes Django use the connected `DATABASE_URL` without copying it into the repository.
-4. GitHub Actions is configured with the Vercel team and project IDs, a team-scoped `VERCEL_TOKEN` secret, and `ENABLE_VERCEL_DEPLOY=true`. The token expires in 90 days; rotate it in Vercel and update the GitHub secret before then. The project ID belongs to the `web` root project.
-5. The Vercel project is also connected to GitHub, so its built-in Git deployments may run alongside GitHub Actions deployments.
+1. The Vercel project at [mini-ticket-tracker-two.vercel.app](https://mini-ticket-tracker-two.vercel.app) deploys both services from this repository. The root `vercel.json` routes `/api/*` to Django in `api/` and other paths to React in `web/`, on the same origin.
+2. The Vercel project builds from the repository root. Its Neon Postgres `mini-ticket-tracker-prod` resource uses the free plan, with deployment branches for Production and Preview. The existing `mini-ticket-tracker-dev` database remains available for development.
+3. Vercel stores `DATABASE_URL`, a generated `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, and `DJANGO_ALLOWED_HOSTS=.vercel.app`. Database credentials and the Django secret are not stored in GitHub or the repository.
+4. GitHub Actions uses the repository variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `ENABLE_VERCEL_DEPLOY=true`, plus the team-scoped `VERCEL_TOKEN` secret. Rotate the token before its 90-day expiry.
+5. Pull requests from this repository run CI, migrate and seed their Preview database branch, and deploy a full-stack preview. Pushes to `main` run CI, migrate Production, seed the demo tickets and shared Agent account, then deploy both services.
 
-The deployment jobs use the Vercel CLI to publish the frontend after CI succeeds; Vercel performs the remote build using the project's `web` root directory. Vercel project metadata is ignored by Git. When the API later moves to a hosted runtime, add its project ID, API environment variables, migration handling, and a frontend `/api/*` rewrite before enabling full-stack deployment.
+The demo login listed above is seeded on Production by the deployment workflow. The seed command resets that shared account to the documented demo password on every production deployment; never use this account for private data. The workflow pulls environment values from Vercel for migrations and seeding rather than copying the database URL into GitHub.
 
 ## Decisions & Tradeoffs
 
-The API and UI live in one repository but run as separate applications, keeping each layer straightforward to work on. PostgreSQL stores tickets, and Django migrations track schema changes. The API validates ticket input and returns pagination metadata so the UI can show queue pages and totals. Offset pagination is a simple fit for a small support queue, though cursor pagination would scale better for a much larger one. Backend hosting and account administration beyond Django's management command remain to be set up. A fully automated end-to-end browser suite and structured logging would be useful next steps.
+The API and UI live in one repository and deploy as separate Vercel Services under one project and domain. PostgreSQL stores tickets, and Django migrations track schema changes. The API validates ticket input and returns pagination metadata so the UI can show queue pages and totals. Offset pagination is a simple fit for a small support queue, though cursor pagination would scale better for a much larger one. A fully automated end-to-end browser suite and structured logging would be useful next steps.

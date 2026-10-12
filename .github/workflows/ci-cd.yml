@@ -1,4 +1,4 @@
-name: CI and Vercel frontend deployment
+name: CI and Vercel deployment
 
 on:
   push:
@@ -66,7 +66,7 @@ jobs:
         working-directory: web
 
   deploy-preview:
-    name: Deploy frontend preview
+    name: Deploy full-stack preview
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -82,11 +82,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - run: npm install --global vercel@latest
-      - run: vercel deploy --token="$VERCEL_TOKEN"
+      - run: pip install -r requirements.txt
+        working-directory: api
+      - run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - run: vercel env run --environment=preview -- python api/manage.py migrate
+      - run: vercel env run --environment=preview -- python api/manage.py seed_demo_data
+      - run: vercel env run --environment=preview -- python api/manage.py seed_demo_account
+      - run: vercel deploy --yes --token="$VERCEL_TOKEN"
 
   deploy-production:
-    name: Deploy frontend production
+    name: Deploy full-stack production
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -103,5 +112,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - run: npm install --global vercel@latest
-      - run: vercel deploy --prod --token="$VERCEL_TOKEN"
+      - run: pip install -r requirements.txt
+        working-directory: api
+      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: vercel env run --environment=production -- python api/manage.py migrate
+      - run: vercel env run --environment=production -- python api/manage.py seed_demo_data
+      - run: vercel env run --environment=production -- python api/manage.py seed_demo_account
+      - run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
