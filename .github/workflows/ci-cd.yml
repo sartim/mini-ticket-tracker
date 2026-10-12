@@ -1,4 +1,4 @@
-name: CI and Vercel deployment
+name: CI and Vercel frontend deployment
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
         working-directory: api
 
   frontend:
-    name: Frontend build
+    name: Frontend checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
         working-directory: web
 
   deploy-preview:
-    name: Deploy Vercel preview
+    name: Deploy frontend preview
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -74,18 +74,14 @@ jobs:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      API_ORIGIN: ${{ vars.VERCEL_API_ORIGIN_PREVIEW }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate deployment configuration and write Vercel routes
-        working-directory: web
-        run: node scripts/write-vercel-config.mjs
       - run: npm install --global vercel@latest
       - run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
         working-directory: web
@@ -95,26 +91,23 @@ jobs:
         working-directory: web
 
   deploy-production:
-    name: Deploy Vercel production
+    name: Deploy frontend production
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.ENABLE_VERCEL_DEPLOY == 'true'
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    environment: production
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      API_ORIGIN: ${{ vars.VERCEL_API_ORIGIN_PRODUCTION }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate deployment configuration and write Vercel routes
-        working-directory: web
-        run: node scripts/write-vercel-config.mjs
       - run: npm install --global vercel@latest
       - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
         working-directory: web
