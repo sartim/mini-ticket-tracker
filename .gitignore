@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+web/node_modules/
+web/dist/
+.vercel/
+web/.vercel/
+web/vercel.json
+.DS_Store
