@@ -110,17 +110,17 @@ Run the API tests with `cd api && python manage.py test`, the frontend interacti
 
 ## GitHub Actions and Vercel deployment
 
-The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. It runs on pull requests and pushes. Vercel CLI deployments stay disabled until the repository variable `ENABLE_VERCEL_DEPLOY` is set to `true`; then same-repository pull requests create frontend previews and pushes to `main` deploy the frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
+The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. It runs on pull requests and pushes. Same-repository pull requests create frontend previews, and pushes to `main` deploy the frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
 
 Before deployments can run:
 
 1. The React frontend Vercel project uses root directory `web` and is already created. Its first deployment is available at [mini-ticket-tracker-two.vercel.app](https://mini-ticket-tracker-two.vercel.app).
 2. The Django API remains local for now. The hosted frontend is therefore for UI preview only; its login and ticket operations need the API. Continue using the local Vite + Django setup for functional testing until the API is deployed or otherwise made reachable.
 3. A free-tier Neon Postgres database named `mini-ticket-tracker-dev` is provisioned in Frankfurt and connected to the Vercel project's Development environment only. It is limited to 1 GB storage and 100 compute-hours per project; keep it for development data. To use it locally, install and authenticate the Vercel CLI, then from `web/` link the `mini-ticket-tracker` project and run `vercel env run -e development -- python3 ../api/manage.py migrate` followed by `vercel env run -e development -- python3 ../api/manage.py runserver`. This makes Django use the connected `DATABASE_URL` without copying it into the repository.
-4. For GitHub Actions CLI deployments, add the repository secret `VERCEL_TOKEN` and repository variables `VERCEL_ORG_ID=team_qcaKyKPsE7BuoVFEaeMJS1ET` and `VERCEL_PROJECT_ID=prj_XmDlR309V4BxYEgRHOoxORrH65Kk`. Then set `ENABLE_VERCEL_DEPLOY` to `true`. The project ID belongs to the `web` root project.
-5. The project is connected to GitHub, which also enables Vercel's own Git deployment trigger. If using the GitHub Actions CLI workflow as the only deployment trigger, turn off or skip Vercel Git builds to avoid duplicate deployments.
+4. GitHub Actions is configured with the Vercel team and project IDs, a team-scoped `VERCEL_TOKEN` secret, and `ENABLE_VERCEL_DEPLOY=true`. The token expires in 90 days; rotate it in Vercel and update the GitHub secret before then. The project ID belongs to the `web` root project.
+5. The Vercel project is also connected to GitHub, so its built-in Git deployments may run alongside GitHub Actions deployments.
 
-The deployment jobs use the Vercel CLI to pull project settings, build, and publish the frontend after CI succeeds. Vercel project metadata is ignored by Git. When the API later moves to a hosted runtime, add its project ID, API environment variables, migration handling, and a frontend `/api/*` rewrite before enabling full-stack deployment.
+The deployment jobs use the Vercel CLI to publish the frontend after CI succeeds; Vercel performs the remote build using the project's `web` root directory. Vercel project metadata is ignored by Git. When the API later moves to a hosted runtime, add its project ID, API environment variables, migration handling, and a frontend `/api/*` rewrite before enabling full-stack deployment.
 
 ## Decisions & Tradeoffs
 
