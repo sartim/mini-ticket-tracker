@@ -9,7 +9,7 @@ permissions:
 
 concurrency:
   group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   backend:
@@ -98,3 +98,29 @@ jobs:
       - run: python api/manage.py seed_demo_data
       - run: python api/manage.py seed_demo_account
       - run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+
+  release:
+    name: Publish semantic release
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.deploy-production.result == 'success'
+    needs: [backend, frontend, deploy-production]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Release from conventional commits
+        uses: python-semantic-release/python-semantic-release@v10.7.0
+        with:
+          directory: api
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_committer_name: github-actions
+          git_committer_email: actions@users.noreply.github.com
+          build: "false"
+          changelog: "false"

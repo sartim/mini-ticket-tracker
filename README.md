@@ -97,7 +97,7 @@ Create a login account from the API directory with `python manage.py createsuper
 
 ## Authentication
 
-The React login form authenticates with Django REST Framework Simple JWT. There is no public registration endpoint; create accounts with Django's `createsuperuser` command or another administrator-managed user workflow. The board includes status navigation, a sliding sidebar, board/list views, and a global search across ticket titles and descriptions.
+The React login form authenticates with Django REST Framework Simple JWT. There is no public registration endpoint; create accounts with Django's `createsuperuser` command or another administrator-managed user workflow. The board includes status navigation, a sliding sidebar, board/list views, and a global search across ticket titles, descriptions, and displayed ticket codes such as `TKT-0007`.
 
 - `POST /api/v1/auth/token` accepts `username` and `password`, returns a short-lived access token and user profile, and sets the refresh token in an HttpOnly cookie.
 - `POST /api/v1/auth/token/refresh` reads the refresh cookie and returns a new access token and user profile.
@@ -130,7 +130,7 @@ Use `Admin`, `Agent`, or `Viewer` for `--role`. Assigning a role replaces the us
 ## API
 
 - `POST /api/v1/tickets` creates a ticket. `title` is required; `description` and `priority` are optional. New tickets start as `open`.
-- `GET /api/v1/tickets?page=1&limit=20&status=open&search=printer` lists tickets in newest-first order. The status and search filters are optional; search matches ticket titles and descriptions. The response uses `count`, `next`, `previous`, and `results`.
+- `GET /api/v1/tickets?page=1&limit=20&status=open&search=printer` lists tickets in newest-first order. The status and search filters are optional; search matches ticket titles, descriptions, and displayed ticket codes. The response uses `count`, `next`, `previous`, and `results`.
 - `PATCH /api/v1/tickets/:id` updates `status`, `priority`, or both.
 - `GET /api/v1/tickets/stats` returns counts for `open`, `in_progress`, and `closed`.
 - `GET /api/v1/health` checks that the API can reach the database.
@@ -179,7 +179,7 @@ API errors use one top-level `error` field. Validation errors place field messag
 { "error": { "title": ["This field may not be blank."] } }
 ```
 
-The API is versioned under `/api/v1/`. Its Python package metadata in `api/pyproject.toml` is the version source of truth. Use SemVer tags in the form `vMAJOR.MINOR.PATCH` that match that file (for example, set the version to `1.0.0` and tag `v1.0.0`). Pushing a matching tag runs `.github/workflows/release.yml`, which creates a GitHub Release with generated notes. Increment MAJOR for incompatible API changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes.
+The API is versioned under `/api/v1/`. Its Python package metadata in `api/pyproject.toml` is the version source of truth. The `v1.0.0` tag marks the baseline release. After tests and the production deployment pass on `main`, Python Semantic Release reads Conventional Commit messages, updates the Python version, commits the change, creates a `vMAJOR.MINOR.PATCH` tag, and publishes a GitHub Release. Use `fix:` for a patch, `feat:` for a minor release, and `feat!:` or `BREAKING CHANGE:` for a major release. Commits without a release type do not create a release. Releases are GitHub repository releases; this app is not published to PyPI.
 
 Statuses are `open`, `in_progress`, and `closed`. Priorities are `low`, `medium`, and `high`.
 
@@ -189,7 +189,7 @@ Run the API unit tests locally without PostgreSQL with `cd api && python manage.
 
 ## GitHub Actions and Vercel deployment
 
-The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. Same-repository pull requests create frontend previews, and pushes to `main` deploy the API and frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
+The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. Pull requests run these checks without deployment credentials. Pushes to `main` deploy the API and frontend to production and then publish a semantic release when the commit messages call for one.
 
 Deployment details:
 

@@ -44,6 +44,28 @@ class TicketApiTests(APITestCase):
         self.assertEqual(next_page.data["count"], 2)
         self.assertIsNotNone(next_page.data["previous"])
 
+    def test_search_matches_displayed_ticket_codes_and_stats(self):
+        open_ticket = Ticket.objects.create(title="Alpha request")
+        Ticket.objects.create(title="Bravo request", status=Ticket.Status.CLOSED)
+        large_id_ticket = Ticket.objects.create(id=10000, title="Gamma request")
+
+        prefix = self.client.get(f"{self.api}/tickets?search=TK")
+        self.assertEqual(prefix.status_code, 200)
+        self.assertEqual(prefix.data["count"], 3)
+
+        code = f"TKT-{open_ticket.id:04d}"
+        exact_code = self.client.get(f"{self.api}/tickets?search={code.lower()}")
+        self.assertEqual(exact_code.data["count"], 1)
+        self.assertEqual(exact_code.data["results"][0]["id"], open_ticket.id)
+        self.assertEqual(
+            self.client.get(f"{self.api}/tickets/stats?search={code}").data,
+            {"open": 1, "in_progress": 0, "closed": 0},
+        )
+
+        large_code = self.client.get(f"{self.api}/tickets?search=TKT-{large_id_ticket.id}")
+        self.assertEqual(large_code.data["count"], 1)
+        self.assertEqual(large_code.data["results"][0]["id"], large_id_ticket.id)
+
     def test_invalid_filter_and_pagination_are_rejected(self):
         self.assertEqual(self.client.get(f"{self.api}/tickets?status=waiting").status_code, 400)
         self.assertEqual(self.client.get(f"{self.api}/tickets?page=0").status_code, 404)

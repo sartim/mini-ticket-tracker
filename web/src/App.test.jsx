@@ -54,7 +54,7 @@ function setupSignedInApp() {
       const search = (query.get("search") || "").toLowerCase();
       const status = query.get("status");
       const filtered = tickets.filter((item) =>
-        (!status || item.status === status) && `${item.title} ${item.description}`.toLowerCase().includes(search));
+        (!status || item.status === status) && `${item.title} ${item.description} TKT-${String(item.id).padStart(4, "0")}`.toLowerCase().includes(search));
       return { count: filtered.length, next: null, previous: null, results: filtered };
     }
     if (path.startsWith("/tickets/")) {
@@ -101,6 +101,16 @@ describe("Ticket Desk UI workflow", () => {
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("search=printer"));
     });
+    expect(await screen.findByText(ticket.title)).toBeTruthy();
+  });
+
+  it("searches for the ticket code shown on the card", async () => {
+    const userActions = userEvent.setup();
+    setupSignedInApp();
+
+    await screen.findByText(ticket.title);
+    await userActions.type(screen.getByRole("searchbox", { name: "Search tickets" }), "TKT-0007");
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith(expect.stringContaining("search=TKT-0007")));
     expect(await screen.findByText(ticket.title)).toBeTruthy();
   });
 

@@ -9,3 +9,9 @@ dependencies = [
     "djangorestframework-simplejwt==5.5.1",
     "psycopg[binary]==3.2.10",
 ]
+
+[tool.semantic_release]
+commit_parser = "conventional"
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+commit_message = "chore(release): v{version} [skip ci]"

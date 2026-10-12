@@ -1,4 +1,5 @@
-from django.db.models import Count, Q
+from django.db.models import Case, CharField, Count, Q, Value, When
+from django.db.models.functions import Cast, Concat, LPad
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,7 +13,21 @@ from .serializers import TicketSerializer, TicketUpdateSerializer
 def matching_search(queryset, request):
     search = request.query_params.get("search", "").strip()
     if search:
-        queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
+        ticket_id = Cast("id", CharField())
+        ticket_code = Concat(
+            Value("TKT-"),
+            Case(
+                When(id__gte=10000, then=ticket_id),
+                default=LPad(ticket_id, 4, Value("0")),
+                output_field=CharField(),
+            ),
+            output_field=CharField(),
+        )
+        queryset = queryset.annotate(ticket_code=ticket_code).filter(
+            Q(title__icontains=search)
+            | Q(description__icontains=search)
+            | Q(ticket_code__icontains=search)
+        )
     return queryset
 
 
