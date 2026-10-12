@@ -129,6 +129,8 @@ Use `Admin`, `Agent`, or `Viewer` for `--role`. Assigning a role replaces the us
 
 ## API
 
+The Django REST Framework browsable API is available on API endpoints. Sign in at `https://mini-ticket-tracker-two.vercel.app/api/v1/session-auth/login/` with a demo account, then open `https://mini-ticket-tracker-two.vercel.app/api/v1/tickets`. Locally, start the API with `cd api && python manage.py runserver`, sign in at `http://127.0.0.1:8000/api/v1/session-auth/login/` with a local Django account, then open `http://127.0.0.1:8000/api/v1/tickets`. JSON remains the default for API clients that request it.
+
 - `POST /api/v1/tickets` creates a ticket. `title` is required; `description` and `priority` are optional. New tickets start as `open`.
 - `GET /api/v1/tickets?page=1&limit=20&status=open&search=printer` lists tickets in newest-first order. The status and search filters are optional; search matches ticket titles, descriptions, and displayed ticket codes. The response uses `count`, `next`, `previous`, and `results`.
 - `GET /api/v1/tickets/:id` retrieves one active ticket.

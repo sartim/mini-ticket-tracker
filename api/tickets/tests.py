@@ -31,6 +31,29 @@ class TicketApiTests(APITestCase):
         self.assertEqual(invalid.status_code, 400)
         self.assertIn("error", invalid.data)
 
+    def test_browsable_api_ui_renders_for_a_session_authenticated_browser(self):
+        user = get_user_model().objects.create_user(
+            username="browser-api-test", password="test-password"
+        )
+        user.groups.add(Group.objects.get(name="Agent"))
+        ticket = Ticket.objects.create(title="Browsable API test ticket")
+        self.client.force_authenticate(user=None)
+        self.client.force_login(user)
+
+        login_page = self.client.get("/api/v1/session-auth/login/")
+        response = self.client.get(f"{self.api}/tickets", HTTP_ACCEPT="text/html")
+
+        self.assertEqual(login_page.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["Content-Type"].startswith("text/html"))
+        self.assertContains(response, ticket.title)
+
+        stylesheet = self.client.get(
+            "/api/static/rest_framework/css/bootstrap.min.css"
+        )
+        self.assertEqual(stylesheet.status_code, 200)
+        self.assertTrue(stylesheet["Content-Type"].startswith("text/css"))
+
     def test_list_filters_and_paginates_tickets(self):
         Ticket.objects.create(title="Open item")
         Ticket.objects.create(title="Another open item")

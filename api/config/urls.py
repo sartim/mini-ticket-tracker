@@ -24,7 +24,10 @@ def api_not_found(request, exception):
     return page_not_found(request, exception)
 
 
-urlpatterns = [
+urlpatterns = []
+urlpatterns.append(path("api/v1/session-auth/", include("rest_framework.urls")))
+
+urlpatterns += [
     path("api/v1/health", health),
     path("api/v1/auth/token", LoginView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh", RefreshView.as_view(), name="token_refresh"),
