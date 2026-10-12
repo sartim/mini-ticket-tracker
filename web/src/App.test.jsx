@@ -105,7 +105,7 @@ describe("Ticket Desk UI workflow", () => {
     expect(apiMock).toHaveBeenCalledWith("/tickets", expect.objectContaining({ method: "POST" }));
 
     await userActions.click(screen.getByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(await screen.findByLabelText("Username")).toBeTruthy();
     expect(apiMock).toHaveBeenCalledWith("/auth/logout", expect.objectContaining({ method: "POST" }));
     expect(clearAccessTokenMock).toHaveBeenCalled();
   });

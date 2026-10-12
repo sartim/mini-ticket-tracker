@@ -31,10 +31,7 @@ export default function Login({ onAuthenticated }) {
 
   return (
     <main className="login-screen">
-      <section className="login-card" aria-labelledby="login-title">
-        <p className="login-eyebrow">LODwar SERVICES · SUPPORT</p>
-        <h1 id="login-title">Welcome back</h1>
-        <p className="login-description">Sign in to manage your team’s support tickets.</p>
+      <section className="login-card" aria-label="Sign in">
         <form className="login-form" onSubmit={signIn}>
           <label htmlFor="login-username">Username</label>
           <input id="login-username" autoComplete="username" required value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Enter your username" />

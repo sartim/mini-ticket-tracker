@@ -2,6 +2,8 @@
 
 A small full-stack ticket tracker with a Django REST API, PostgreSQL database, and separate React interface. It supports authenticated sign-in, creating and filtering tickets, changing status and priority, and seeing counts by status.
 
+**Links:** [GitHub repository](https://github.com/sartim/mini-ticket-tracker) · [Live UI preview](https://mini-ticket-tracker-two.vercel.app/)
+
 ## Run with Docker Compose
 
 Install Docker Desktop, start it, then run from this directory:
@@ -13,11 +15,37 @@ docker compose up --build
 
 Open [http://localhost:5173](http://localhost:5173). The API is available at [http://localhost:8000](http://localhost:8000). Compose starts PostgreSQL, applies Django migrations, and serves the React development UI. The root `.env` configures Compose and Django; `web/.env` is only needed when running Vite directly. Stop the services with `Ctrl+C`; use `docker compose down -v` only when you also want to delete the local database volume.
 
-Create an account before signing in:
+### Login credentials
+
+There is no shared default username or password. The frontend test account is mocked and cannot sign in to a running app. For the local Docker setup, create your own administrator account after the containers are up:
 
 ```sh
 docker compose exec api python manage.py createsuperuser
 ```
+
+Enter the username and password you choose in the login form at `http://localhost:5173`. The superuser has Admin access. To populate the board, seed sample tickets separately with `docker compose exec api python manage.py seed_demo_data`; this does not create a login account.
+
+For a non-admin Agent or Viewer account, create a regular Django user, then assign its role:
+
+```sh
+docker compose exec api python manage.py shell
+```
+
+At the Django shell prompt, create the account with a password you choose:
+
+```python
+from getpass import getpass
+from django.contrib.auth import get_user_model
+get_user_model().objects.create_user(username="support-agent", password=getpass("Password: "))
+```
+
+Exit the shell, then assign its role (replace the username or role as needed):
+
+```sh
+docker compose exec api python manage.py assign_role support-agent --role Agent
+```
+
+The Vercel site is currently a UI preview only: the Django API remains local, so no account can sign in through the hosted site yet. The locally created account works with the local app and database only.
 
 Seed the database with example tickets across all statuses and priorities:
 
@@ -112,7 +140,7 @@ Run the API tests with `cd api && python manage.py test`, the frontend interacti
 
 The workflow in `.github/workflows/ci-cd.yml` runs Django checks and API tests against PostgreSQL, then runs the frontend tests and production build. It runs on pull requests and pushes. Same-repository pull requests create frontend previews, and pushes to `main` deploy the frontend to production. Pull requests from forks still run CI, but do not receive deployment credentials.
 
-Before deployments can run:
+Deployment details:
 
 1. The React frontend Vercel project uses root directory `web` and is already created. Its first deployment is available at [mini-ticket-tracker-two.vercel.app](https://mini-ticket-tracker-two.vercel.app).
 2. The Django API remains local for now. The hosted frontend is therefore for UI preview only; its login and ticket operations need the API. Continue using the local Vite + Django setup for functional testing until the API is deployed or otherwise made reachable.
