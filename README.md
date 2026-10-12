@@ -195,11 +195,11 @@ Deployment details:
 
 1. The Vercel project at [mini-ticket-tracker-two.vercel.app](https://mini-ticket-tracker-two.vercel.app) deploys both services from this repository. The root `vercel.json` routes `/api/*` to Django in `api/` and other paths to React in `web/`, on the same origin.
 2. The Vercel project builds from the repository root. Its Neon Postgres `mini-ticket-tracker-prod` resource uses the free plan, with deployment branches for Production and Preview. The existing `mini-ticket-tracker-dev` database remains available for development.
-3. Vercel stores `DATABASE_URL`, a generated `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, and `DJANGO_ALLOWED_HOSTS=.vercel.app`. Database credentials and the Django secret are not stored in GitHub or the repository.
-4. GitHub Actions uses the repository variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `ENABLE_VERCEL_DEPLOY=true`, plus the team-scoped `VERCEL_TOKEN` secret. Rotate the token before its 90-day expiry.
-5. Pull requests from this repository run CI, migrate and seed their Preview database branch, and deploy a full-stack preview. Pushes to `main` run CI, migrate Production, seed the demo tickets and shared Agent account, then deploy both services.
+3. Vercel stores the runtime `DATABASE_URL`, a generated `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, and `DJANGO_ALLOWED_HOSTS=.vercel.app`. GitHub Actions uses separately encrypted copies of the database URL and Django key only for running production migrations and seeds; no secrets belong in the repository.
+4. GitHub Actions uses the repository variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `ENABLE_VERCEL_DEPLOY=true`, plus the team-scoped `VERCEL_TOKEN` secret. The protected `Production` GitHub Actions environment also needs `PRODUCTION_DATABASE_URL` (the Neon unpooled connection string) and `PRODUCTION_DJANGO_SECRET_KEY` so its migration and seed commands can connect without downloading Vercel's protected Secret values. Rotate the Vercel token before its 90-day expiry.
+5. Pull requests run CI checks. Pushes to `main` run CI, migrate Production, seed the demo tickets and shared Agent account, then deploy both services.
 
-The demo login listed above is seeded on Production by the deployment workflow. The seed command resets that shared account to the documented demo password on every production deployment; never use this account for private data. The workflow pulls environment values from Vercel for migrations and seeding rather than copying the database URL into GitHub.
+The demo login listed above is seeded on Production by the deployment workflow. The seed command resets that shared account to the documented demo password on every production deployment; never use this account for private data. The runtime keeps its connection string and Django secret in Vercel; GitHub Actions keeps separate encrypted copies only for running Production migrations and seeds.
 
 ## Decisions & Tradeoffs
 
