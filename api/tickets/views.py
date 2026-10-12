@@ -57,19 +57,31 @@ class TicketListCreateView(generics.ListCreateAPIView):
         )
 
 
-class TicketUpdateView(generics.UpdateAPIView):
+class TicketUpdateView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ticket.objects.all()
-    serializer_class = TicketUpdateSerializer
+    serializer_class = TicketSerializer
     permission_classes = [TicketRolePermission]
-    http_method_names = ["patch", "head", "options"]
+    http_method_names = ["get", "patch", "delete", "head", "options"]
+
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return TicketUpdateSerializer
+        return TicketSerializer
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         ticket = serializer.save()
         return Response(TicketSerializer(ticket).data)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(TicketSerializer(instance).data, status=status.HTTP_200_OK)
 
 
 class TicketStatsView(APIView):

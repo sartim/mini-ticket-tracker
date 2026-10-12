@@ -131,7 +131,9 @@ Use `Admin`, `Agent`, or `Viewer` for `--role`. Assigning a role replaces the us
 
 - `POST /api/v1/tickets` creates a ticket. `title` is required; `description` and `priority` are optional. New tickets start as `open`.
 - `GET /api/v1/tickets?page=1&limit=20&status=open&search=printer` lists tickets in newest-first order. The status and search filters are optional; search matches ticket titles, descriptions, and displayed ticket codes. The response uses `count`, `next`, `previous`, and `results`.
-- `PATCH /api/v1/tickets/:id` updates `status`, `priority`, or both.
+- `GET /api/v1/tickets/:id` retrieves one active ticket.
+- `PATCH /api/v1/tickets/:id` updates `status`, `priority`, or both. Ticket responses include `created_at`, `updated_at`, and `deleted_at` timestamps; `updated_at` changes on every edit.
+- `DELETE /api/v1/tickets/:id` soft-deletes a ticket for Admin users and returns the ticket with its `deleted_at` timestamp. Deleted tickets are hidden from normal list, detail, search, and stats queries. They remain available through the model's `all_objects` manager for audit or recovery.
 - `GET /api/v1/tickets/stats` returns counts for `open`, `in_progress`, and `closed`.
 - `GET /api/v1/health` checks that the API can reach the database.
 
@@ -167,7 +169,9 @@ List responses use standard page-number pagination. `next` and `previous` are ab
       "description": "The front office printer is not responding.",
       "status": "open",
       "priority": "medium",
-      "created_at": "2026-10-12T08:00:00Z"
+      "created_at": "2026-10-12T08:00:00Z",
+      "updated_at": "2026-10-12T08:00:00Z",
+      "deleted_at": null
     }
   ]
 }

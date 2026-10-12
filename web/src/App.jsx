@@ -14,6 +14,10 @@ function formatDate(value) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
 }
 
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
 function userInitials(user) {
   const name = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() || user?.username || "?";
   return name.split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
@@ -277,7 +281,8 @@ export default function App() {
                       <div className="ticket-card-heading"><span className={`priority-marker priority-${ticket.priority}`} aria-hidden="true"/><span className="ticket-code">TKT-{String(ticket.id).padStart(4, "0")}</span>{canEditTickets && <details className="ticket-actions"><summary className="ticket-card-menu" aria-label={`Edit ${ticket.title}`}>•••</summary><div className="ticket-actions-menu"><label htmlFor={`priority-${ticket.id}`}>Priority</label><select id={`priority-${ticket.id}`} value={ticket.priority} onChange={(event) => updateTicket(ticket, "priority", event.target.value)}>{PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select><label htmlFor={`status-${ticket.id}`}>Status</label><select id={`status-${ticket.id}`} value={ticket.status} onChange={(event) => updateTicket(ticket, "status", event.target.value)}>{STATUSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div></details>}</div>
                       <h3 title={ticket.title}>{ticket.title}</h3>
                       {ticket.description && <p className="ticket-description">{ticket.description}</p>}
-                      <div className="ticket-card-footer"><span className="ticket-card-date"><span aria-hidden="true">▣</span>{formatDate(ticket.created_at)}</span><span className={`ticket-priority-label priority-${ticket.priority}`}>{ticket.priority}</span><span className="card-team-avatar" title={authUser.username} aria-label={`Assigned to ${authUser.username}`}>{userInitials(authUser)}</span></div>
+                      <div className="ticket-card-footer"><span className="ticket-card-date" title={`Created ${formatDateTime(ticket.created_at)}`}><span aria-hidden="true">▣</span>{formatDate(ticket.created_at)}</span><span className={`ticket-priority-label priority-${ticket.priority}`}>{ticket.priority}</span><span className="card-team-avatar" title={authUser.username} aria-label={`Assigned to ${authUser.username}`}>{userInitials(authUser)}</span></div>
+                      <small className="ticket-updated-at">Updated {formatDateTime(ticket.updated_at || ticket.created_at)}</small>
                     </article>
                   ))}
                 </div>

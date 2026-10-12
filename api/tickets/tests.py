@@ -1,9 +1,11 @@
+from datetime import timedelta
 from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import call_command
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from .models import Ticket
@@ -72,6 +74,8 @@ class TicketApiTests(APITestCase):
 
     def test_patch_updates_fields_and_stats_include_zero_statuses(self):
         ticket = Ticket.objects.create(title="Password reset")
+        previous_update = timezone.now() - timedelta(days=1)
+        Ticket.all_objects.filter(pk=ticket.pk).update(updated_at=previous_update)
         response = self.client.patch(
             f"{self.api}/tickets/{ticket.id}",
             {"status": Ticket.Status.IN_PROGRESS, "priority": Ticket.Priority.HIGH},
@@ -80,10 +84,39 @@ class TicketApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], Ticket.Status.IN_PROGRESS)
         self.assertEqual(response.data["priority"], Ticket.Priority.HIGH)
+        self.assertGreater(response.data["updated_at"], previous_update.isoformat())
+        self.assertIsNone(response.data["deleted_at"])
+        self.assertIn("created_at", response.data)
         self.assertEqual(
             self.client.get(f"{self.api}/tickets/stats").data,
             {"open": 0, "in_progress": 1, "closed": 0},
         )
+
+    def test_delete_soft_deletes_ticket_and_hides_it_from_active_queries(self):
+        admin = get_user_model().objects.create_user(username="ticket-admin-test")
+        admin.groups.add(Group.objects.get(name="Admin"))
+        self.client.force_authenticate(user=admin)
+        ticket = Ticket.objects.create(title="Request to remove")
+
+        response = self.client.delete(f"{self.api}/tickets/{ticket.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.data["deleted_at"])
+        self.assertFalse(Ticket.objects.filter(pk=ticket.pk).exists())
+        stored = Ticket.all_objects.get(pk=ticket.pk)
+        self.assertIsNotNone(stored.deleted_at)
+        self.assertGreaterEqual(stored.updated_at, stored.deleted_at)
+        self.assertEqual(self.client.get(f"{self.api}/tickets").data["count"], 0)
+        self.assertEqual(self.client.get(f"{self.api}/tickets/stats").data["open"], 0)
+        self.assertEqual(self.client.get(f"{self.api}/tickets/{ticket.id}").status_code, 404)
+
+    def test_agent_cannot_soft_delete_tickets(self):
+        ticket = Ticket.objects.create(title="Protected request")
+
+        response = self.client.delete(f"{self.api}/tickets/{ticket.id}")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Ticket.objects.filter(pk=ticket.pk).exists())
 
     def test_unknown_ticket_returns_404(self):
         response = self.client.patch(

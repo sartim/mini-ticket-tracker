@@ -15,7 +15,9 @@ class TicketRolePermission(BasePermission):
             permission = "tickets.view_ticket"
         elif request.method == "POST":
             permission = "tickets.add_ticket"
-        elif request.method in {"PUT", "PATCH", "DELETE"}:
+        elif request.method == "DELETE":
+            permission = "tickets.delete_ticket"
+        elif request.method in {"PUT", "PATCH"}:
             permission = "tickets.change_ticket"
         else:
             return False

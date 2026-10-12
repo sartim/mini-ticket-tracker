@@ -31,6 +31,7 @@ const ticket = {
   status: "open",
   priority: "medium",
   created_at: "2026-10-12T08:00:00Z",
+  updated_at: "2026-10-12T08:00:00Z",
 };
 
 function setupSignedInApp() {
@@ -80,6 +81,7 @@ describe("Ticket Desk UI workflow", () => {
 
     await screen.findByText(ticket.title);
     expect(screen.queryByText("Lodwar Services")).toBeNull();
+    expect(screen.getByText(/Updated/)).toBeTruthy();
     expect(screen.getByLabelText("Assigned to support-agent").textContent).toBe("SA");
     await userActions.click(screen.getByRole("button", { name: "List view" }));
     expect(screen.getByRole("button", { name: "List view" }).getAttribute("aria-pressed")).toBe("true");
