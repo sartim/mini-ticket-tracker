@@ -74,7 +74,7 @@ TEMPLATES = [
 ]
 WSGI_APPLICATION = "config.wsgi.application"
 STATIC_URL = "/api/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 WHITENOISE_USE_FINDERS = True
 
 database_url = urlparse(
